@@ -7,6 +7,7 @@ import datasets
 
 def load_ds(dataset_name, seed, add_options=None):
     """Load dataset."""
+    # Added another user 'kaggle' for running in kaggle notebooks
     user = os.getenv('USER', 'kaggle')
 
     # Check if the dataset_name is a path to a local file
