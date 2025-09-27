@@ -40,7 +40,23 @@ def main(args):
     scratch_dir = os.getenv('SCRATCH_DIR', '.')
     if not os.path.exists(f"{scratch_dir}/{user}/uncertainty"):
         os.makedirs(f"{scratch_dir}/{user}/uncertainty")
-    for i in range(3):
+    # for i in range(3):
+    #     try:
+    #         wandb.init(
+    #             entity=args.entity,
+    #             project="semantic_uncertainty" if not args.debug else "semantic_uncertainty_debug",
+    #             dir=f"{scratch_dir}/{user}/uncertainty",
+    #             config=args,
+    #             notes=f'slurm_id: {slurm_jobid}, experiment_lot: {args.experiment_lot}',
+    #             tags=[args.model_name, args.dataset, args.brief_prompt, args.experiment_lot]
+    #         )
+    #         break
+    #     except:
+    #         time.sleep(10 * 60)
+    # logging.info('Finished wandb init.')
+
+    # modifying wandb init to avoid timeout errors and to ensure proper logging
+    for attempt in range(3):
         try:
             wandb.init(
                 entity=args.entity,
@@ -50,10 +66,16 @@ def main(args):
                 notes=f'slurm_id: {slurm_jobid}, experiment_lot: {args.experiment_lot}',
                 tags=[args.model_name, args.dataset, args.brief_prompt, args.experiment_lot]
             )
-            break
-        except:
-            time.sleep(10 * 60)
-    logging.info('Finished wandb init.')
+            logging.info(f"Successfully initialized wandb on attempt {attempt + 1}.")
+            break  # Exit the loop on success
+        except Exception as e:
+            logging.warning(f"wandb init failed on attempt {attempt + 1}/3. Error: {e}")
+            if attempt < 2:  # Don't wait after the last attempt
+                logging.info("Retrying in 30 seconds...")
+                time.sleep(30)
+    else:  # This 'else' block runs ONLY if the 'for' loop completes without a 'break'
+        logging.error("Failed to initialize wandb after 3 attempts. Exiting.")
+        raise RuntimeError("Could not initialize wandb after multiple retries.")
 
     # Get accuracy metric.
     metric = utils.get_metric(args.metric)
