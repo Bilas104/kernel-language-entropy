@@ -48,13 +48,19 @@ def get_parser(stages=['generate', 'compute']):
             "--model_max_new_tokens", type=int, default=50,
             help="Max number of tokens generated.",
         )
+        # parser.add_argument(
+        #     "--dataset", type=str, default="trivia_qa",
+        #     choices=['trivia_qa', 'squad', 'bioasq', 'nq', 'svamp'],
+        #     help="Dataset to use")
         parser.add_argument(
             "--dataset", type=str, default="trivia_qa",
-            choices=['trivia_qa', 'squad', 'bioasq', 'nq', 'svamp'],
-            help="Dataset to use")
+            help="Dataset to use (name or path to a local .jsonl file)")
+        # parser.add_argument(
+        #     "--ood_train_dataset", type=str, default=None,
+        #     choices=['trivia_qa', 'squad', 'bioasq', 'nq', 'svamp'],
+        #     help="Dataset to use to assemble few-shot prompt, p_true prompt, and train p_ik.")
         parser.add_argument(
             "--ood_train_dataset", type=str, default=None,
-            choices=['trivia_qa', 'squad', 'bioasq', 'nq', 'svamp'],
             help="Dataset to use to assemble few-shot prompt, p_true prompt, and train p_ik.")
         parser.add_argument(
             "--num_samples", type=int, default=400,

@@ -9,6 +9,16 @@ def load_ds(dataset_name, seed, add_options=None):
     """Load dataset."""
     user = os.environ['USER']
 
+    # Check if the dataset_name is a path to a local file
+    if os.path.exists(dataset_name):
+        # Load the local jsonl file
+        dataset = datasets.load_dataset('json', data_files=dataset_name, split='train')
+        # Split it into training and validation sets for the sanity check
+        dataset = dataset.train_test_split(test_size=0.5, seed=seed)
+        train_dataset = dataset['train']
+        validation_dataset = dataset['test']
+        return train_dataset, validation_dataset
+
     train_dataset, validation_dataset = None, None
     if dataset_name == "squad":
         dataset = datasets.load_dataset("squad_v2")
