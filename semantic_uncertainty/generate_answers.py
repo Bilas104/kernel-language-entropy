@@ -33,7 +33,9 @@ def main(args):
 
     experiment_details = {'args': args}
     random.seed(args.random_seed)
-    user = os.environ['USER']
+    # user = os.environ['USER']
+    # Added another user 'kaggle' for running in kaggle notebooks
+    user = os.getenv('USER', 'kaggle')
     slurm_jobid = os.getenv('SLURM_JOB_ID', None)
     scratch_dir = os.getenv('SCRATCH_DIR', '.')
     if not os.path.exists(f"{scratch_dir}/{user}/uncertainty"):
