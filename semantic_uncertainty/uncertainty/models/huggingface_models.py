@@ -427,7 +427,7 @@ def remove_split_layer(device_map_in):
 
 # Adding support for google/flan-t5 models
 
-from transformers import AutoModelForSeq2SeqLM
+from transformers import AutoModelForSeq2SeqLM # Import the correct class for T5 models
 
 class HuggingfaceModel(BaseModel):
     """Hugging Face Model that can handle both Causal and Seq2Seq LM architectures."""
@@ -440,7 +440,6 @@ class HuggingfaceModel(BaseModel):
         if stop_sequences == 'default':
             stop_sequences = STOP_SEQUENCES
 
-        # This is the unified logic from our previous patch
         kwargs = {}
         quantization_suffix = None
         base_model_name = model_name
@@ -472,7 +471,6 @@ class HuggingfaceModel(BaseModel):
         logging.info(f"Loading model from Hugging Face ID: {model_id}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-        # --- MODIFICATION: Logic to choose the correct AutoModel class ---
         if 't5' in model_id.lower():
             logging.info("Detected T5 architecture. Loading with AutoModelForSeq2SeqLM.")
             self.model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -494,7 +492,6 @@ class HuggingfaceModel(BaseModel):
         self.token_limit = 4096 if 'Llama-2' in model_name or "Llama-3" in model_name else 2048
 
     def predict(self, input_data, temperature, return_full=False):
-        # This predict method is compatible with both model types
         inputs = self.tokenizer(input_data, return_tensors="pt").to("cuda")
 
         if 'llama' in self.model_name.lower() or 'falcon' in self.model_name or 'mistral' in self.model_name.lower():
@@ -540,9 +537,26 @@ class HuggingfaceModel(BaseModel):
         answer = full_answer[input_data_offset:]
         sliced_answer = answer.strip()
         
-        # The logic for getting exact log-likelihoods and embeddings can be complex
-        # and differ between architectures. For this sanity check, we can return dummy values.
-        log_likelihoods = [0.0] * len(outputs.sequences[0])
-        last_token_embedding = None
-
+        transition_scores = self.model.compute_transition_scores(
+            outputs.sequences, outputs.scores, normalize_logits=True)
+        log_likelihoods = [score.item() for score in transition_scores[0]]
+        
+        last_hidden_state = outputs.hidden_states[-1][-1] if outputs.hidden_states else None
+        last_token_embedding = last_hidden_state[:, -1, :].cpu() if last_hidden_state is not None else None
+        
         return sliced_answer, log_likelihoods, last_token_embedding
+
+    def get_p_true(self, input_data):
+        """Get the probability of the model anwering A (True) for the given input."""
+
+        input_data += ' A'
+        tokenized_prompt_true = self.tokenizer(input_data, return_tensors='pt').to('cuda')['input_ids']
+        target_ids_true = tokenized_prompt_true.clone()
+        target_ids_true[0, :-1] = -100
+
+        with torch.no_grad():
+            model_output_true = self.model(tokenized_prompt_true, labels=target_ids_true)
+
+        loss_true = model_output_true.loss
+
+        return -loss_true.item()
