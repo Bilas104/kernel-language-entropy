@@ -292,9 +292,30 @@ def get_reference(example):
     return reference
 
 
+# def init_model(args):
+#     mn = args.model_name
+#     if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower():
+#         model = HuggingfaceModel(
+#             mn, stop_sequences='default',
+#             max_new_tokens=args.model_max_new_tokens)
+#     else:
+#         raise ValueError(f'Unknown model_name `{mn}`.')
+#     return model
+
+
+# def init_model_from_name(mn, max_new_tokens=50):
+#     if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower():
+#         model = HuggingfaceModel(
+#             mn, stop_sequences='default',
+#             max_new_tokens=max_new_tokens)
+#     else:
+#         raise ValueError(f'Unknown model_name `{mn}`.')
+#     return model
+
 def init_model(args):
     mn = args.model_name
-    if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower():
+    # MODIFICATION: Added 't5' to the list of accepted model types.
+    if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower() or 't5' in mn.lower():
         model = HuggingfaceModel(
             mn, stop_sequences='default',
             max_new_tokens=args.model_max_new_tokens)
@@ -302,9 +323,9 @@ def init_model(args):
         raise ValueError(f'Unknown model_name `{mn}`.')
     return model
 
-
 def init_model_from_name(mn, max_new_tokens=50):
-    if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower():
+    # MODIFICATION: Added 't5' to the list of accepted model types.
+    if 'llama' in mn.lower() or 'falcon' in mn or 'mistral' in mn.lower() or 't5' in mn.lower():
         model = HuggingfaceModel(
             mn, stop_sequences='default',
             max_new_tokens=max_new_tokens)
