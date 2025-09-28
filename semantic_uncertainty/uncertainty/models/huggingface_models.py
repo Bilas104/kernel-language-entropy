@@ -93,105 +93,149 @@ class HuggingfaceModel(BaseModel):
         if stop_sequences == 'default':
             stop_sequences = STOP_SEQUENCES
 
-        if 'llama' in model_name.lower():
-            if model_name.endswith('-8bit'):
-                kwargs = {'quantization_config': BitsAndBytesConfig(
-                    load_in_8bit=True,)}
-                model_name = model_name[:-len('-8bit')]
-                eightbit = True
-            else:
-                kwargs = {}
-                eightbit = False
+        # if 'llama' in model_name.lower():
+        #     if model_name.endswith('-8bit'):
+        #         kwargs = {'quantization_config': BitsAndBytesConfig(
+        #             load_in_8bit=True,)}
+        #         model_name = model_name[:-len('-8bit')]
+        #         eightbit = True
+        #     else:
+        #         kwargs = {}
+        #         eightbit = False
 
-            if 'Llama-2' in model_name or "Llama-3" in model_name:
-                base = 'meta-llama'
-                if 'Llama-2' in model_name:
-                    model_name = model_name + '-hf'
-            else:
-                base = 'huggyllama'
+        #     if 'Llama-2' in model_name or "Llama-3" in model_name:
+        #         base = 'meta-llama'
+        #         if 'Llama-2' in model_name:
+        #             model_name = model_name + '-hf'
+        #     else:
+        #         base = 'huggyllama'
 
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                f"{base}/{model_name}", device_map="auto",
-                token_type_ids=None)
+        #     self.tokenizer = AutoTokenizer.from_pretrained(
+        #         f"{base}/{model_name}", device_map="auto",
+        #         token_type_ids=None)
 
-            llama65b = '65b' in model_name and base == 'huggyllama'
-            llama2_70b = '70b' in model_name and base == 'meta-llama'
+        #     llama65b = '65b' in model_name and base == 'huggyllama'
+        #     llama2_70b = '70b' in model_name and base == 'meta-llama'
 
-            if ('7b' in model_name or "8B" in model_name or '13b' in model_name) or eightbit:
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    f"{base}/{model_name}", device_map="auto",
-                    max_memory={0: '80GIB'}, **kwargs,)
+        #     if ('7b' in model_name or "8B" in model_name or '13b' in model_name) or eightbit:
+        #         self.model = AutoModelForCausalLM.from_pretrained(
+        #             f"{base}/{model_name}", device_map="auto",
+        #             max_memory={0: '80GIB'}, **kwargs,)
 
-            elif llama2_70b or llama65b:
-                path = snapshot_download(
-                    repo_id=f'{base}/{model_name}',
-                    allow_patterns=['*.json', '*.model', '*.safetensors'],
-                    ignore_patterns=['pytorch_model.bin.index.json']
-                )
+        #     elif llama2_70b or llama65b:
+        #         path = snapshot_download(
+        #             repo_id=f'{base}/{model_name}',
+        #             allow_patterns=['*.json', '*.model', '*.safetensors'],
+        #             ignore_patterns=['pytorch_model.bin.index.json']
+        #         )
 
-                config = AutoConfig.from_pretrained(f"{base}/{model_name}")
-                with accelerate.init_empty_weights():
-                    self.model = AutoModelForCausalLM.from_config(config)
-                self.model.tie_weights()
-                max_mem = 15 * 4686198491
+        #         config = AutoConfig.from_pretrained(f"{base}/{model_name}")
+        #         with accelerate.init_empty_weights():
+        #             self.model = AutoModelForCausalLM.from_config(config)
+        #         self.model.tie_weights()
+        #         max_mem = 15 * 4686198491
 
-                device_map = accelerate.infer_auto_device_map(
-                    self.model.model,
-                    max_memory={0: max_mem, 1: max_mem},
-                    dtype='float16'
-                )
-                device_map = remove_split_layer(device_map)
-                full_model_device_map = {f"model.{k}": v for k, v in device_map.items()}
-                full_model_device_map["lm_head"] = 0
+        #         device_map = accelerate.infer_auto_device_map(
+        #             self.model.model,
+        #             max_memory={0: max_mem, 1: max_mem},
+        #             dtype='float16'
+        #         )
+        #         device_map = remove_split_layer(device_map)
+        #         full_model_device_map = {f"model.{k}": v for k, v in device_map.items()}
+        #         full_model_device_map["lm_head"] = 0
 
-                self.model = accelerate.load_checkpoint_and_dispatch(
-                    self.model, path, device_map=full_model_device_map,
-                    dtype='float16', skip_keys='past_key_values')
-            else:
-                raise ValueError
+        #         self.model = accelerate.load_checkpoint_and_dispatch(
+        #             self.model, path, device_map=full_model_device_map,
+        #             dtype='float16', skip_keys='past_key_values')
+        #     else:
+        #         raise ValueError
 
-        elif 'mistral' in model_name.lower():
+        # elif 'mistral' in model_name.lower():
 
-            if model_name.endswith('-8bit'):
-                kwargs = {'quantization_config': BitsAndBytesConfig(
-                    load_in_8bit=True,)}
-                model_name = model_name[:-len('-8bit')]
-            if model_name.endswith('-4bit'):
-                kwargs = {'quantization_config': BitsAndBytesConfig(
-                    load_in_4bit=True,)}
-                model_name = model_name[:-len('-4bit')]
-            else:
-                kwargs = {}
+        #     if model_name.endswith('-8bit'):
+        #         kwargs = {'quantization_config': BitsAndBytesConfig(
+        #             load_in_8bit=True,)}
+        #         model_name = model_name[:-len('-8bit')]
+        #     if model_name.endswith('-4bit'):
+        #         kwargs = {'quantization_config': BitsAndBytesConfig(
+        #             load_in_4bit=True,)}
+        #         model_name = model_name[:-len('-4bit')]
+        #     else:
+        #         kwargs = {}
 
-            model_id = f'mistralai/{model_name}'
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_id, device_map='auto', token_type_ids=None,
-                clean_up_tokenization_spaces=False)
+        #     model_id = f'mistralai/{model_name}'
+        #     self.tokenizer = AutoTokenizer.from_pretrained(
+        #         model_id, device_map='auto', token_type_ids=None,
+        #         clean_up_tokenization_spaces=False)
 
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                device_map='auto',
-                max_memory={0: '80GIB'},
-                **kwargs,
-            )
+        #     self.model = AutoModelForCausalLM.from_pretrained(
+        #         model_id,
+        #         device_map='auto',
+        #         max_memory={0: '80GIB'},
+        #         **kwargs,
+        #     )
 
-        elif 'falcon' in model_name:
-            model_id = f'tiiuae/{model_name}'
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_id, device_map='auto', token_type_ids=None,
-                clean_up_tokenization_spaces=False)
+        # elif 'falcon' in model_name:
+        #     model_id = f'tiiuae/{model_name}'
+        #     self.tokenizer = AutoTokenizer.from_pretrained(
+        #         model_id, device_map='auto', token_type_ids=None,
+        #         clean_up_tokenization_spaces=False)
 
-            kwargs = {'quantization_config': BitsAndBytesConfig(
-                load_in_8bit=True,)}
+        #     kwargs = {'quantization_config': BitsAndBytesConfig(
+        #         load_in_8bit=True,)}
 
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                trust_remote_code=True,
-                device_map='auto',
-                **kwargs,
-            )
+        #     self.model = AutoModelForCausalLM.from_pretrained(
+        #         model_id,
+        #         trust_remote_code=True,
+        #         device_map='auto',
+        #         **kwargs,
+        #     )
+        # else:
+        #     raise ValueError
+
+        # modification to better handle quantization suffixes and model ids.
+        kwargs = {}
+        quantization_suffix = None
+        base_model_name = model_name
+
+        # Unified logic to handle quantization suffixes correctly
+        if base_model_name.endswith('-int8') or base_model_name.endswith('-8bit'):
+            kwargs['quantization_config'] = BitsAndBytesConfig(load_in_8bit=True)
+            quantization_suffix = '-int8' if base_model_name.endswith('-int8') else '-8bit'
+            logging.info(f"Preparing to load model in 8-bit mode.")
+        elif base_model_name.endswith('-4bit'):
+            kwargs['quantization_config'] = BitsAndBytesConfig(load_in_4bit=True)
+            quantization_suffix = '-4bit'
+            logging.info(f"Preparing to load model in 4-bit mode.")
+
+        # If a suffix was found, remove it from the model name to find the base model
+        if quantization_suffix:
+            base_model_name = base_model_name[:-len(quantization_suffix)]
+
+        # Determine the full model ID on Hugging Face Hub
+        if 'llama' in base_model_name.lower():
+            base = 'meta-llama' if ('Llama-2' in base_model_name or "Llama-3" in base_model_name) else 'huggyllama'
+            if 'Llama-2' in base_model_name:
+                base_model_name = base_model_name + '-hf'
+            model_id = f"{base}/{base_model_name}"
+        elif 'mistral' in base_model_name.lower():
+            model_id = f"mistralai/{base_model_name}"
+        elif 'falcon' in base_model_name.lower():
+            model_id = f"tiiuae/{base_model_name}"
         else:
-            raise ValueError
+            # Fallback for other models like T5
+            model_id = base_model_name
+        
+        logging.info(f"Loading model from Hugging Face ID: {model_id}")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+        # Load the model with the prepared arguments
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            device_map="auto",
+            trust_remote_code=True if 'falcon' in base_model_name.lower() else False,
+            **kwargs
+        )
 
         self.model_name = model_name
         self.stop_sequences = stop_sequences + [self.tokenizer.eos_token]
